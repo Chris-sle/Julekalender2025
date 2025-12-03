@@ -50,7 +50,7 @@ class Visitor(db.Model):
     first_visit = db.Column(db.DateTime, server_default=db.func.now())
 
 class AccessLog(db.Model):
-    __tablename__ = "accessLogs"
+    __tablename__ = "accesslogs"
 
     id = db.Column(db.Integer, primary_key=True)
     visitor_token = db.Column(UUID(as_uuid=True), db.ForeignKey("visitors.token_id"))

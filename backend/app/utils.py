@@ -8,7 +8,7 @@ from app.models import Admin, Visitor, AccessLog
 
 def create_admin_token(admin_id, email):
     payload = {
-        "sub": admin_id,
+        "sub": str(admin_id),
         "email": email,
         "exp": datetime.utcnow() + timedelta(hours=current_app.config["JWT_EXPIRES_HOURS"]),
     }
@@ -27,7 +27,8 @@ def admin_required(f):
             payload = jwt.decode(token, current_app.config["JWT_SECRET_KEY"], algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
             return jsonify({"message": "Token expired"}), 401
-        except jwt.InvalidTokenError:
+        except jwt.InvalidTokenError as e:
+            print(f"DEBUG: Feilen er: {e}")
             return jsonify({"message": "Invalid token"}), 401
 
         user = db.session.get(Admin, payload.get("sub")) # Nyere SQLAlchemy syntaks

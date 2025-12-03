@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime
 from app import db
-from app.models import CalendarEntry
+from app.models import CalendarEntry, AccessLog
 from app.utils import admin_required, log_guest_access_to_db
 
 calendar_bp = Blueprint('calendar', __name__)
@@ -82,11 +82,19 @@ def update_entry(id):
     db.session.commit()
     return jsonify(entry.to_dict())
 
-@calendar_bp.route('/calendar/<int:id>', methods=['DELETE'])
+@calendar_bp.route('/calendar/<int:entry_id>', methods=['DELETE'])
 @admin_required
-def delete_entry(id):
-    entry = db.session.get(CalendarEntry, id)
-    if entry:
-        db.session.delete(entry)
-        db.session.commit()
+def delete_calendar_entry(entry_id):
+    entry = db.session.get(CalendarEntry, entry_id)
+    
+    if not entry:
+        return jsonify({"message": "Not found"}), 404
+        
+    # Slett tilknyttede access logs først
+    AccessLog.query.filter_by(calendar_id=entry.id).delete()
+    
+    # Slett kalenderluken
+    db.session.delete(entry)
+    db.session.commit()
+    
     return jsonify({"message": "Deleted"})
