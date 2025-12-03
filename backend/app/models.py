@@ -27,7 +27,7 @@ class CalendarEntry(db.Model):
     task_text = db.Column(db.Text)
     video_type = db.Column(db.String(10)) # 'youtube' eller 'upload'
     video_path = db.Column(db.String(255))
-    created_by = db.Column(db.Integer, db.ForeignKey("Admins.id"))
+    created_by = db.Column(db.Integer, db.ForeignKey("admins.id"))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
     is_published = db.Column(db.Boolean, default=False)
@@ -53,6 +53,6 @@ class AccessLog(db.Model):
     __tablename__ = "accessLogs"
 
     id = db.Column(db.Integer, primary_key=True)
-    visitor_token = db.Column(UUID(as_uuid=True), db.ForeignKey("Visitors.token_id"))
-    calendar_id = db.Column(db.Integer, db.ForeignKey("CalendarEntries.id"))
+    visitor_token = db.Column(UUID(as_uuid=True), db.ForeignKey("visitors.token_id"))
+    calendar_id = db.Column(db.Integer, db.ForeignKey("calendarentries.id"))
     access_time = db.Column(db.DateTime, server_default=db.func.now())
