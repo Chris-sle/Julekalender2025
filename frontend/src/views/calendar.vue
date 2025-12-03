@@ -71,17 +71,15 @@ function openCard(day) {
 function closeCard() {
   if (selectedDay.value && !openedDays.value.includes(selectedDay.value)) {
     openedDays.value.push(selectedDay.value)
-    // save openedDays in localStorage so it persists
     localStorage.setItem('openedDays', JSON.stringify(openedDays.value))
   }
   selectedDay.value = null
 }
 
 function modalOpened() {
-  // placeholder for modal actions
+  // kommer greier her etterhvert
 }
 
-// shuffle helper
 function shuffle(array){
   const arr = [...array];
   for(let i = arr.length - 1; i > 0; i--){
@@ -91,16 +89,13 @@ function shuffle(array){
   return arr;
 }
 
-// days array (shuffled, persisted)
 let storedDays = localStorage.getItem('calendarDays')
 const orderedDays = Array.from({ length: 24 }, (_, i) => ({ number: i + 1 }))
 
 const days = ref(storedDays ? JSON.parse(storedDays) : shuffle(orderedDays))
 
-// save days in localStorage if first load
 if (!storedDays) localStorage.setItem('calendarDays', JSON.stringify(days.value))
 
-// restore openedDays from localStorage
 let storedOpened = localStorage.getItem('openedDays')
 if (storedOpened) openedDays.value = JSON.parse(storedOpened)
 </script>
