@@ -1,12 +1,70 @@
 <script setup>
-import {ref} from "vue";
+import {ref, onUnmounted} from "vue";
 
 let selectedDay = ref(null)
 let theText = ref(null)
 
-const test =  () => {
-  console.log(theText.value)
-}
+const files = ref([]);
+const previews = ref({});
+
+const onFileChange = (event) => {
+  const newFiles = Array.from(event.target.files);
+  newFiles.forEach(file => {
+    files.value.push(file);
+    if (isImage(file) || isVideo(file)) {
+      previews.value[file.name] = URL.createObjectURL(file);
+    }
+  });
+  event.target.value = '';
+};
+
+const formatBytes = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const isImage = (file) => file.type.startsWith('image/');
+const isVideo = (file) => file.type.startsWith('video/');
+
+
+const save = async () => {
+  if (!selectedDay.value || !theText.value?.trim() || files.value.length === 0) {
+    alert('Vennligst velg dag, skriv tekst og last opp minst én fil.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('task_text', theText.value);
+  files.value.forEach(file => formData.append('files', file));
+
+  try {
+    const token = localStorage.getItem('authToken');
+    const response = await fetch(`/api/calendar/${selectedDay.value}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
+
+    if (!response.ok) throw new Error('Upload feilet');
+    const data = await response.json();
+    console.log('Lagt til:', data);
+
+    files.value = [];
+    previews.value = {};
+    theText.value = '';
+    alert('Lagret!');
+
+  } catch (error) {
+    console.error('Feil:', error);
+    alert('Feil ved lagring: ' + error.message);
+  }
+};
+
+onUnmounted(() => Object.values(previews.value).forEach(URL.revokeObjectURL));
+
 </script>
 
 <template>
@@ -53,7 +111,7 @@ const test =  () => {
         </div>
       </div>
 
-      <button @click="test" class="mt-6 w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200">Lagre</button>
+      <button @click="save" class="mt-6 w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200">Lagre</button>
     </div>
   </div>
 </template>
