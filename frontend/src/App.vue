@@ -1,7 +1,4 @@
 <template>
-<Calendar />
+<router-view />
 </template>
 
-<script setup>
-import Calendar from './views/Calendar.vue'
-</script>
