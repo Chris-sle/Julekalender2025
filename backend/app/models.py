@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import UUID
 import uuid
 
 class Admin(db.Model):
-    __tablename__ = "Admins"
+    __tablename__ = "admins"
 
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), unique=True, nullable=False)
@@ -19,7 +19,7 @@ class Admin(db.Model):
         return check_password_hash(self.password_hash, password)
 
 class CalendarEntry(db.Model):
-    __tablename__ = "CalendarEntries"
+    __tablename__ = "calendarentries"
 
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, unique=True, nullable=False)
@@ -44,13 +44,13 @@ class CalendarEntry(db.Model):
         }
 
 class Visitor(db.Model):
-    __tablename__ = "Visitors"
+    __tablename__ = "visitors"
     # Bruker UUID som primærnøkkel
     token_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     first_visit = db.Column(db.DateTime, server_default=db.func.now())
 
 class AccessLog(db.Model):
-    __tablename__ = "AccessLogs"
+    __tablename__ = "accessLogs"
 
     id = db.Column(db.Integer, primary_key=True)
     visitor_token = db.Column(UUID(as_uuid=True), db.ForeignKey("Visitors.token_id"))

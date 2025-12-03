@@ -40,9 +40,7 @@ def admin_required(f):
     return wrapper
 
 def log_guest_access_to_db(token_uuid_str, calendar_entry_id):
-    """
-    Logger besøk. Oppretter Visitor hvis den ikke finnes.
-    """
+    # Logger besøk. Oppretter Visitor hvis den ikke finnes.
     if not token_uuid_str:
         return
 

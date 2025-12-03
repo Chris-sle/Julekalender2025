@@ -19,8 +19,4 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(calendar_bp)
 
-    # Opprett tabeller automatisk hvis de mangler (for dev)
-    with app.app_context():
-        db.create_all()
-
     return app
