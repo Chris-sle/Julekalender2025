@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Calendar from '../views/Calendar.vue'
+import Calendar from '../views/calendar.vue'
 import AdminPanel from '../views/adminpanel.vue'
 
 const routes = [
