@@ -46,7 +46,7 @@ def setup_test_data():
             except Exception as e:
                 db.session.rollback()
                 print(f"❌ Feil under opprydding: {e}")
-                # Vi prøver å fortsette likevel, kanskje det går bra hvis admin ikke ble slettet
+                # prøver å fortsette likevel, kanskje det går bra hvis admin ikke ble slettet
         
         # Sjekk om admin faktisk ble borte
         if not Admin.query.filter_by(email=TEST_EMAIL).first():
