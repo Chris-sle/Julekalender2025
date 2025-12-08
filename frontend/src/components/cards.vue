@@ -18,7 +18,9 @@ export default {
   emits: ["open"],
   methods: {
     open() {
-      if (!this.opened) this.$emit("open", this.day)
+      // Always emit the open event. The parent (`Calendar.vue`) is
+      // responsible for enforcing locking of future dates.
+      this.$emit("open", this.day)
     }
   }
 }
