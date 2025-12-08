@@ -3,8 +3,13 @@ from datetime import datetime
 from app import db
 from app.models import CalendarEntry, AccessLog
 from app.utils import admin_required, log_guest_access_to_db
+import os
 
 calendar_bp = Blueprint('calendar', __name__)
+
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 # --- PUBLIC ROUTES ---
 
@@ -18,7 +23,7 @@ def get_calendar_entry(date_str):
 
     # Hent luke (kun hvis publisert!)
     entry = CalendarEntry.query.filter_by(date=target_date, is_published=True).first()
-    
+
     if not entry:
         return jsonify({"message": "No content found for this date"}), 404
 
@@ -42,10 +47,10 @@ def list_all_entries():
 @calendar_bp.route('/calendar', methods=['POST'])
 @admin_required
 def create_entry():
-    data = request.get_json()
-    
+    form = request.form
+
     try:
-        entry_date = datetime.strptime(data.get('date'), "%Y-%m-%d").date()
+        entry_date = datetime.strptime(form.get("date"), "%Y-%m-%d").date()
     except (ValueError, TypeError):
         return jsonify({"message": "Invalid date"}), 400
 
@@ -54,47 +59,63 @@ def create_entry():
 
     new_entry = CalendarEntry(
         date=entry_date,
-        youtube_url=data.get('youtube_url'),
-        task_text=data.get('task_text'),
-        video_type=data.get('video_type', 'youtube'),
-        is_published=data.get('is_published', False),
+        task_text=form.get("task_text"),
+        video_type=form.get("video_type", "upload"),
+        is_published=form.get("is_published") == "true",
         created_by=g.current_admin.id
     )
-    
+
+    # Filopplasting
+    files = request.files.getlist("files")
+
+    if files:
+        f = files[0]  # bare første fil for nå
+        save_path = os.path.join(UPLOAD_FOLDER, f.filename)
+        f.save(save_path)
+        new_entry.video_path = save_path
+
     db.session.add(new_entry)
     db.session.commit()
-    
+
     return jsonify(new_entry.to_dict()), 201
 
+
+# -----------------------------
+# ADMIN: UPDATE ENTRY (JSON)
+# -----------------------------
 @calendar_bp.route('/calendar/<int:id>', methods=['PUT'])
 @admin_required
 def update_entry(id):
     entry = db.session.get(CalendarEntry, id)
     if not entry:
         return jsonify({"message": "Not found"}), 404
-        
+
     data = request.get_json()
-    
+
     if 'youtube_url' in data: entry.youtube_url = data['youtube_url']
     if 'task_text' in data: entry.task_text = data['task_text']
     if 'is_published' in data: entry.is_published = data['is_published']
-    
+
     db.session.commit()
     return jsonify(entry.to_dict())
 
+
+# -----------------------------
+# ADMIN: DELETE ENTRY
+# -----------------------------
 @calendar_bp.route('/calendar/<int:entry_id>', methods=['DELETE'])
 @admin_required
 def delete_calendar_entry(entry_id):
     entry = db.session.get(CalendarEntry, entry_id)
-    
+
     if not entry:
         return jsonify({"message": "Not found"}), 404
-        
+
     # Slett tilknyttede access logs først
     AccessLog.query.filter_by(calendar_id=entry.id).delete()
     
     # Slett kalenderluken
     db.session.delete(entry)
     db.session.commit()
-    
+
     return jsonify({"message": "Deleted"})

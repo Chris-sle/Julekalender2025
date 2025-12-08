@@ -1,71 +1,130 @@
 <script setup>
-import {ref, onUnmounted} from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 
-let selectedDay = ref(null)
-let theText = ref(null)
+const router = useRouter();
 
+
+const token = ref(null);
+const selectedDay = ref(null);
+const theText = ref("");
 const files = ref([]);
 const previews = ref({});
-
-const onFileChange = (event) => {
-  const newFiles = Array.from(event.target.files);
-  newFiles.forEach(file => {
-    files.value.push(file);
-    if (isImage(file) || isVideo(file)) {
-      previews.value[file.name] = URL.createObjectURL(file);
-    }
-  });
-  event.target.value = '';
-};
-
-const formatBytes = (bytes) => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
+let theSavedFiles = ref({});
 
 const isImage = (file) => file.type.startsWith('image/');
 const isVideo = (file) => file.type.startsWith('video/');
 
 
-const save = async () => {
-  if (!selectedDay.value || !theText.value?.trim() || files.value.length === 0) {
-    alert('Vennligst velg dag, skriv tekst og last opp minst én fil.');
-    return;
+onMounted(() => {
+  token.value = localStorage.getItem("authToken");
+
+  console.log("Token:", token.value);
+
+  if (!token.value) {
+    return router.push("/login");
+  }
+});
+
+
+const dateStr = computed(() => {
+  if (!selectedDay.value) return null;
+  return `2025-12-${String(selectedDay.value).padStart(2, "0")}`;
+});
+
+
+function onFileChange(event) {
+  const incoming = Array.from(event.target.files);
+
+  incoming.forEach((file) => {
+    files.value.push(file);
+    previews.value[file.name] = URL.createObjectURL(file);
+  });
+
+  event.target.value = "";
+}
+
+onUnmounted(() => {
+  Object.values(previews.value).forEach(URL.revokeObjectURL);
+});
+
+
+function formatBytes(bytes) {
+  const units = ["Bytes", "KB", "MB", "GB"];
+  if (!bytes) return "0 Bytes";
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return (bytes / Math.pow(1024, i)).toFixed(2) + " " + units[i];
+}
+
+// --------------------
+// GET ENTRY FOR TESTING
+// --------------------
+async function getAllData() {
+  if (!dateStr.value) return alert("Velg en dag først");
+
+  const response = await fetch(
+      `http://127.0.0.1:5000/calendar/${dateStr.value}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token.value}`,
+        },
+      }
+  );
+
+  if (response.status === 401) {
+    alert("Logg inn på nytt");
+    return router.push("/admin");
+  }
+
+  theSavedFiles.value =  await response.json();
+}
+
+// --------------------
+// SAVE ENTRY WITH FILES
+// --------------------
+async function save() {
+  if (!dateStr.value || !theText.value.trim() || files.value.length === 0) {
+    return alert("Fyll ut alle felter og last opp fil");
   }
 
   const formData = new FormData();
-  formData.append('task_text', theText.value);
-  files.value.forEach(file => formData.append('files', file));
+  formData.append("date", dateStr.value);
+  formData.append("task_text", theText.value);
+  formData.append("video_type", "upload");
+  formData.append("is_published", "true");
 
-  try {
-    const token = localStorage.getItem('authToken');
-    const response = await fetch(`/api/calendar/${selectedDay.value}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData
-    });
+  files.value.forEach((file) => formData.append("files", file));
 
-    if (!response.ok) throw new Error('Upload feilet');
-    const data = await response.json();
-    console.log('Lagt til:', data);
+  const response = await fetch("http://127.0.0.1:5000/calendar", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token.value}`,
+    },
+    body: formData,
+  });
 
-    files.value = [];
-    previews.value = {};
-    theText.value = '';
-    alert('Lagret!');
-
-  } catch (error) {
-    console.error('Feil:', error);
-    alert('Feil ved lagring: ' + error.message);
+  if (response.status === 401) {
+    alert("Token utløpt, logg inn igjen");
+    return router.push("/admin-login");
   }
-};
 
-onUnmounted(() => Object.values(previews.value).forEach(URL.revokeObjectURL));
+  if (!response.ok) {
+    console.error(await response.text());
+    return alert("Upload feilet.");
+  }
 
+  console.log("LAGRET:", await response.json());
+
+  // Reset
+  selectedDay.value = null;
+  theText.value = "";
+  files.value = [];
+  previews.value = {};
+
+  alert("Lagret!");
+}
 </script>
+
 
 <template>
   <div class="flex-1 grid grid-cols-2 md:grid-cols-2 gap-10 p-6 bg-gray-50 ">
@@ -75,46 +134,55 @@ onUnmounted(() => Object.values(previews.value).forEach(URL.revokeObjectURL));
 
     <div class="bg-gray-100 rounded-lg shadow-lg p-10">
       <label class="block mb-2 text-sm font-medium text-gray-700">Velg dag</label>
-      <select v-model="selectedDay" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+      <select v-model="selectedDay" class="w-full p-3 border border-gray-300 rounded-md" required>
         <option v-for="day in 24" :key="day" :value="day">{{ day }}. desember</option>
       </select>
 
-      <div>
-        <label for="text" class="block mb-2 text-sm font-medium text-gray-700">Tekst for luke {{ selectedDay }}:</label>
+      <div class="mt-4">
+        <label class="block mb-2 text-sm font-medium text-gray-700">
+          Tekst for luke {{ selectedDay }}:
+        </label>
         <textarea
             v-model="theText"
-            id="text"
-            placeholder="Skriv inn tekst her..."
-            class="w-full h-full p-3 border border-gray-300 rounded-md resize-vertical min-h-[120px] focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            class="w-full h-full p-3 border border-gray-300 rounded-md min-h-[120px]"
+            placeholder="Skriv tekst..."
             required
         ></textarea>
       </div>
     </div>
 
     <div class="bg-gray-100 rounded-lg shadow-lg p-6">
+      <label class="block mb-2 text-sm font-medium text-gray-700">Last opp filer</label>
 
+      <input
+          class="w-full p-2 border border-gray-300 rounded-md mb-4"
+          type="file"
+          @change="onFileChange"
+          accept="image/*,video/*,.pdf,.docx"
+          multiple
+      />
 
-      <div class="mt-6">
-        <label class="block mb-2 text-sm font-medium text-gray-700">Last opp filer</label>
-        <input
-            class="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-4"
-            type="file"
-            @change="onFileChange"
-            accept="image/*,video/*,.pdf,.docx"
-            multiple
-        />
-
-        <div v-for="file in files" :key="file.name" class="border border-gray-200 rounded-md p-3 bg-gray-50 mb-4">
-          <p class="text-sm text-gray-600 mb-2">{{ file.name }} ({{ formatBytes(file.size) }})</p>
-          <img v-if="isImage(file)" :src="previews[file.name]" class="max-w-full h-32 object-cover rounded" />
-          <video v-if="isVideo(file)" :src="previews[file.name]" controls class="max-w-full h-32 rounded"></video>
-        </div>
+      <div
+          v-for="file in files"
+          :key="file.name"
+          class="border border-gray-200 rounded-md p-3 bg-gray-50 mb-4"
+      >
+        <p class="text-sm text-gray-600 mb-2">
+          {{ file.name }} ({{ formatBytes(file.size) }})
+        </p>
+        <img v-if="isImage(file)" :src="previews[file.name]" class="h-32 object-cover rounded" />
+        <video v-if="isVideo(file)" :src="previews[file.name]" controls class="h-32 rounded"></video>
       </div>
 
-      <button @click="save" class="mt-6 w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200">Lagre</button>
+      <button @click="save" class="mt-6 w-full bg-blue-600 text-white py-3 rounded-md">
+        Lagre
+      </button>
+
+      <button @click="getAllData" class="mt-3 w-full bg-green-600 text-white py-3 rounded-md">
+        Klikk her for info
+      </button>
+      {{ theSavedFiles.video_path }}
     </div>
   </div>
 </template>
 
-<style scoped>
-</style>
