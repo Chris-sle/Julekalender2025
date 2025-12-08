@@ -36,7 +36,7 @@ class CalendarEntry(db.Model):
         return {
             "id": self.id,
             "date": self.date.isoformat(),
-            "youtube_url": self.youtube_url,
+            #"youtube_url": self.youtube_url,
             "task_text": self.task_text,
             "video_type": self.video_type,
             "video_path": self.video_path,
