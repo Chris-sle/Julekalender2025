@@ -4,14 +4,11 @@ import os
 
 app = create_app()
 
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
 
 @app.route('/uploads/<path:filename>')
 def uploaded_file(filename):

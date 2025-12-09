@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, g
 from datetime import datetime
+from werkzeug.utils import secure_filename
 from app import db
 from app.models import CalendarEntry, AccessLog
 from app.utils import admin_required, log_guest_access_to_db

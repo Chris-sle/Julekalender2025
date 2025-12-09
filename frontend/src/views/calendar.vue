@@ -41,9 +41,9 @@
         <p v-if="currentEntry.task_text" class="text-lg">{{ currentEntry.task_text }}</p>
         
         <!-- YouTube video -->
-        <div v-if="currentEntry.video_type === 'youtube' && currentEntry.youtube_url" class="w-full">
+        <div v-if="currentEntry.video_type === 'youtube' && currentEntry.video_path" class="w-full">
           <iframe
-            :src="`https://www.youtube.com/embed/${extractYoutubeId(currentEntry.youtube_url)}`"
+            :src="`https://www.youtube.com/embed/${extractYoutubeId(currentEntry.video_path)}`"
             width="100%"
             height="315"
             frameborder="0"
