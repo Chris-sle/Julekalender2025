@@ -34,11 +34,9 @@
       @opened="modalOpened"
       @close="closeCard"
     >
-      <h2 class="text-xl font-bold mb-4 text-center">
-        Dag {{ selectedDay }}
-      </h2>
-      <div v-if="currentEntry" class="space-y-4">
-        <p v-if="currentEntry.task_text" class="text-lg">{{ currentEntry.task_text }}</p>
+        <h2 class="tag-text">{{ selectedDay }}. Desember</h2>
+        <div v-if="currentEntry" class="space-y-4">
+        <p class="tag-text">{{ currentEntry.task_text }}</p>
         
         <!-- YouTube video -->
         <div v-if="currentEntry.video_type === 'youtube' && currentEntry.video_path" class="w-full">
@@ -107,7 +105,6 @@ function extractYoutubeId(url) {
 async function fetchEntryForDay(day) {
   try {
     const year = new Date().getFullYear()
-    // Build date string directly (YYYY-MM-DD) to avoid timezone shifts
     const month = 12 // December
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     
@@ -122,10 +119,8 @@ async function fetchEntryForDay(day) {
     if (response.ok) {
       const data = await response.json()
       currentEntry.value = data
-      // If the entry references an uploaded file, log the exact URL the frontend will request
       if (data && data.video_type === 'upload' && data.video_path) {
         console.log('[Calendar] Raw video_path from backend:', data.video_path)
-        // Split on both forward and back slashes to handle Windows paths
         const filename = data.video_path.split(/[/\\]/).pop()
         const videoUrl = `${API_BASE_URL}/uploads/${encodeURIComponent(filename)}`
         console.log('[Calendar] Uploaded video URL:', videoUrl)
@@ -173,13 +168,11 @@ function shuffle(array){
   return arr
 }
 
-// Days for calendar
 let storedDays = localStorage.getItem('calendarDays')
 const orderedDays = Array.from({ length: 24 }, (_, i) => ({ number: i + 1 }))
 const days = ref(storedDays ? JSON.parse(storedDays) : shuffle(orderedDays))
 if (!storedDays) localStorage.setItem('calendarDays', JSON.stringify(days.value))
 
-// Load opened days from localStorage
 let storedOpened = localStorage.getItem('openedDays')
 if (storedOpened) openedDays.value = JSON.parse(storedOpened)
 
@@ -189,7 +182,6 @@ function isVideo(path) {
 }
 
 function getUploadUrl(path) {
-  // Accept paths with backslashes (Windows) or forward slashes
   const filename = path.split(/[/\\]/).pop()
   return `${API_BASE_URL}/uploads/${encodeURIComponent(filename)}`
 }
@@ -216,4 +208,36 @@ function modalOpened() {
   50% { transform: translateY(50vh) translateX(10px); }
   100% { transform: translateY(100vh) translateX(-10px); }
 }
+
+
+.modal-card .tag-text {
+  background: #fdf8e7;
+  padding: 12px 18px;
+  border-radius: 8px;
+  display: inline-block;
+  max-width: 100%;
+  color: #3b2f1e;
+  font-weight: 600;
+  font-family: 'Georgia', serif;
+  position: relative;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+
+  
+  background-image: radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+
+.modal-card .tag-text::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -12px;
+  width: 0;
+  height: 0;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-right: 12px solid #fdf8e7;
+}
+
+
 </style>
