@@ -59,23 +59,36 @@ def create_entry():
     if CalendarEntry.query.filter_by(date=entry_date).first():
         return jsonify({"message": "Entry already exists for this date"}), 400
 
+    video_type = form.get("video_type", "upload")
+    video_path = None
+
+    if video_type == "upload":
+        files = request.files.getlist("files")
+        if not files or not files[0].filename:
+            return jsonify({"message": "Ingen fil lastet opp"}), 400
+        f = files[0]
+        filename = secure_filename(f.filename)
+        save_path = os.path.join(UPLOAD_FOLDER, filename)
+        f.save(save_path)
+        video_path = save_path
+
+    elif video_type == "youtube":
+        youtube_url = form.get("youtube_url", "").strip()
+        if not youtube_url:
+            return jsonify({"message": "YouTube-lenke mangler"}), 400
+        video_path = youtube_url  # lagre lenken direkte i video_path
+
+    else:
+        return jsonify({"message": "Ugyldig video_type"}), 400
+
     new_entry = CalendarEntry(
         date=entry_date,
         task_text=form.get("task_text"),
-        video_type=form.get("video_type", "upload"),
+        video_type=video_type,
+        video_path=video_path,           # ← her havner enten filsti eller YouTube-lenke
         is_published=form.get("is_published") == "true",
         created_by=g.current_admin.id
     )
-
-    # Filopplasting
-    files = request.files.getlist("files")
-
-    if files:
-        f = files[0]  # bare første fil for nå
-        save_path = os.path.join(UPLOAD_FOLDER, f.filename)
-        f.save(save_path)
-        # Store only the filename in the DB to keep paths consistent across platforms
-        new_entry.video_path = f.filename
 
     db.session.add(new_entry)
     db.session.commit()
