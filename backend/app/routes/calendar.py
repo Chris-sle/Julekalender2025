@@ -7,7 +7,9 @@ import os
 
 calendar_bp = Blueprint('calendar', __name__)
 
-UPLOAD_FOLDER = "uploads"
+# Use an absolute uploads folder (backend/uploads) to avoid relative-path issues
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
@@ -72,7 +74,8 @@ def create_entry():
         f = files[0]  # bare første fil for nå
         save_path = os.path.join(UPLOAD_FOLDER, f.filename)
         f.save(save_path)
-        new_entry.video_path = save_path
+        # Store only the filename in the DB to keep paths consistent across platforms
+        new_entry.video_path = f.filename
 
     db.session.add(new_entry)
     db.session.commit()

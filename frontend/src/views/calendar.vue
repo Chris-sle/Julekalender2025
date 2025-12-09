@@ -37,7 +37,38 @@
       <h2 class="text-xl font-bold mb-4 text-center">
         Dag {{ selectedDay }}
       </h2>
-      <p>Her kommer det masse greier etterhvert!</p>
+      <div v-if="currentEntry" class="space-y-4">
+        <p v-if="currentEntry.task_text" class="text-lg">{{ currentEntry.task_text }}</p>
+        
+        <!-- YouTube video -->
+        <div v-if="currentEntry.video_type === 'youtube' && currentEntry.youtube_url" class="w-full">
+          <iframe
+            :src="`https://www.youtube.com/embed/${extractYoutubeId(currentEntry.youtube_url)}`"
+            width="100%"
+            height="315"
+            frameborder="0"
+            allowfullscreen
+          ></iframe>
+        </div>
+        
+      <!-- Uploaded video/content -->
+      <div v-if="currentEntry.video_type === 'upload' && currentEntry.video_path" class="w-full">
+        <template v-if="isVideo(currentEntry.video_path)">
+          <video width="100%" controls>
+            <source :src="getUploadUrl(currentEntry.video_path)" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </template>
+        <template v-else>
+          <img
+            :src="getUploadUrl(currentEntry.video_path)"
+            alt="Uploaded content"
+            class="w-full object-contain"
+          />
+        </template>
+      </div>
+      </div>
+      <p v-else class="text-center text-gray-500">Innholdet kommer snart...</p>
     </CardModal>
 
     <Footer />
@@ -49,13 +80,16 @@ import { ref } from 'vue'
 import Card from '../components/Cards.vue'
 import CardModal from '../components/CardModal.vue'
 import Footer from '../components/Footer.vue'
-import bg from '../img/background.jpg'
+import bg from '../img/background2.jpg'
 
-// opened cards
+ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+
+// Opened cards
 const openedDays = ref([])
 const selectedDay = ref(null)
+const currentEntry = ref(null)
 
-// snowflake data
+// Snowflake data
 const snowflakes = Array.from({ length: 50 }, (_, i) => ({
   id: i,
   left: Math.random() * 100,
@@ -64,41 +98,107 @@ const snowflakes = Array.from({ length: 50 }, (_, i) => ({
   opacity: 0.4 + Math.random() * 0.6
 }))
 
-function openCard(day) {
-  selectedDay.value = day
+function extractYoutubeId(url) {
+  const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  const match = url.match(regex)
+  return match ? match[1] : ''
 }
 
-function closeCard() {
-  if (selectedDay.value && !openedDays.value.includes(selectedDay.value)) {
-    openedDays.value.push(selectedDay.value)
+async function fetchEntryForDay(day) {
+  try {
+    const year = new Date().getFullYear()
+    // Build date string directly (YYYY-MM-DD) to avoid timezone shifts
+    const month = 12 // December
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    
+    const visitorToken = localStorage.getItem('visitorToken')
+    const headers = {}
+    if (visitorToken) headers['X-Visitor-Token'] = visitorToken
+
+    const url = `${API_BASE_URL}/calendar/${dateStr}`
+    console.log('[Calendar] Fetching entry for', dateStr, url)
+    const response = await fetch(url, { method: 'GET', headers })
+    console.log('[Calendar] Fetch response', response.status, response.statusText)
+    if (response.ok) {
+      const data = await response.json()
+      currentEntry.value = data
+      // If the entry references an uploaded file, log the exact URL the frontend will request
+      if (data && data.video_type === 'upload' && data.video_path) {
+        console.log('[Calendar] Raw video_path from backend:', data.video_path)
+        // Split on both forward and back slashes to handle Windows paths
+        const filename = data.video_path.split(/[/\\]/).pop()
+        const videoUrl = `${API_BASE_URL}/uploads/${encodeURIComponent(filename)}`
+        console.log('[Calendar] Uploaded video URL:', videoUrl)
+      }
+    } else {
+      currentEntry.value = null
+    }
+  } catch (error) {
+    console.error('Failed to fetch calendar entry:', error)
+    currentEntry.value = null
+  }
+}
+
+function openCard(day) {
+  const today = new Date()
+  const currentDay = today.getDate()
+
+  // Lock future days
+  if (day > currentDay) return
+
+  // Open the modal
+  selectedDay.value = day
+  fetchEntryForDay(day)
+
+  // Save in localStorage if not already opened
+  if (!openedDays.value.includes(day)) {
+    openedDays.value.push(day)
     localStorage.setItem('openedDays', JSON.stringify(openedDays.value))
   }
+}
+
+
+function closeCard() {
   selectedDay.value = null
+  currentEntry.value = null
 }
 
-function modalOpened() {
-  // kommer greier her etterhvert
-}
-
+// Shuffle function
 function shuffle(array){
   const arr = [...array];
   for(let i = arr.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
   }
-  return arr;
+  return arr
 }
 
+// Days for calendar
 let storedDays = localStorage.getItem('calendarDays')
 const orderedDays = Array.from({ length: 24 }, (_, i) => ({ number: i + 1 }))
-
 const days = ref(storedDays ? JSON.parse(storedDays) : shuffle(orderedDays))
-
 if (!storedDays) localStorage.setItem('calendarDays', JSON.stringify(days.value))
 
+// Load opened days from localStorage
 let storedOpened = localStorage.getItem('openedDays')
 if (storedOpened) openedDays.value = JSON.parse(storedOpened)
+
+function isVideo(path) {
+  const ext = path.split('.').pop().toLowerCase()
+  return ['mp4', 'webm', 'ogg'].includes(ext)
+}
+
+function getUploadUrl(path) {
+  // Accept paths with backslashes (Windows) or forward slashes
+  const filename = path.split(/[/\\]/).pop()
+  return `${API_BASE_URL}/uploads/${encodeURIComponent(filename)}`
+}
+
+function modalOpened() {
+  // Placeholder for any action when modal is opened
+}
 </script>
+
 
 <style scoped>
 .snowflake {
