@@ -267,6 +267,8 @@ function modalOpened() {
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
+  text-align: left;
+  white-space: pre-wrap;
 }
 
 .modal-card .task-content::before {
