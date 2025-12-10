@@ -11,13 +11,6 @@
       >
         Admin
       </button>
-      
-      <button
-        class="px-3 py-1 bg-red-600 rounded hover:bg-red-500 text-sm"
-        @click="resetCalendar"
-      >
-        Reset localStorage (for testing)
-      </button>
     </div>
   </footer>
 </template>
