@@ -98,7 +98,7 @@ def create_entry():
 
 
 # -----------------------------
-# ADMIN: UPDATE ENTRY (JSON)
+# ADMIN: UPDATE ENTRY (JSON eller FormData)
 # -----------------------------
 @calendar_bp.route('/calendar/<int:id>', methods=['PUT'])
 @admin_required
@@ -107,14 +107,58 @@ def update_entry(id):
     if not entry:
         return jsonify({"message": "Not found"}), 404
 
-    data = request.get_json()
+    # Sjekk om requesten er JSON (bare tekst-oppdatering) eller FormData (filopplasting)
+    if request.is_json:
+        data = request.get_json()
+        
+        # Håndter JSON-oppdatering (som før)
+        if 'task_text' in data: entry.task_text = data['task_text']
+        if 'is_published' in data: entry.is_published = data['is_published']
+        
+        # Hvis man oppdaterer youtube-url via JSON
+        if 'youtube_url' in data: 
+            entry.video_type = 'youtube'
+            entry.video_path = data['youtube_url']
+            
+    else:
+        # Håndter FormData (Multipart) - støtter filopplasting
+        form = request.form
+        
+        # Oppdater tekst-felt hvis de finnes i formen
+        if 'task_text' in form: entry.task_text = form.get("task_text")
+        
+        # Håndter "is_published" som streng "true"/"false" fra FormData
+        if 'is_published' in form:
+            entry.is_published = form.get("is_published") == "true"
 
-    if 'youtube_url' in data: entry.youtube_url = data['youtube_url']
-    if 'task_text' in data: entry.task_text = data['task_text']
-    if 'is_published' in data: entry.is_published = data['is_published']
+        # Sjekk om brukeren vil endre video-kilde eller fil
+        new_video_type = form.get("video_type")
+        
+        if new_video_type == "upload":
+            files = request.files.getlist("files")
+            # Oppdater kun hvis en NY fil faktisk er sendt med
+            if files and files[0].filename:
+                # (Valgfritt) Slett gammel fil her hvis du vil rydde opp
+                # if entry.video_type == 'upload' and entry.video_path and os.path.exists(entry.video_path):
+                #    os.remove(entry.video_path)
+
+                f = files[0]
+                filename = secure_filename(f.filename)
+                save_path = os.path.join(UPLOAD_FOLDER, filename)
+                f.save(save_path)
+                
+                entry.video_type = "upload"
+                entry.video_path = save_path
+                
+        elif new_video_type == "youtube":
+            youtube_url = form.get("youtube_url", "").strip()
+            if youtube_url:
+                entry.video_type = "youtube"
+                entry.video_path = youtube_url
 
     db.session.commit()
     return jsonify(entry.to_dict())
+
 
 
 # -----------------------------

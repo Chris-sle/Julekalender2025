@@ -24,7 +24,7 @@ const isLoading = ref(false);
 
 const isEditMode = computed(() => props.entryToEdit !== null);
 
-// Hvis vi er i redigeringsmodus, fyll inn feltene med eksisterende data
+// Hvis man er i redigeringsmodus, fyll inn feltene med eksisterende data
 watch(() => props.entryToEdit, (newVal) => {
     if (newVal) {
         // Henter ut dagen (siste del av "2025-12-01") og gjør om til tall
@@ -35,7 +35,8 @@ watch(() => props.entryToEdit, (newVal) => {
             youtubeUrl.value = newVal.video_url || newVal.youtube_url || ""; // Sjekker begge felter for sikkerhets skyld
         } else if (newVal.video_type === 'upload') {
             videoSource.value = 'upload';
-            // Merk: Vi kan ikke forhåndsvise opplastede filer uten å laste dem inn på nytt
+            // Ved redigering viser vi ikke filen i input-feltet (sikkerhet),
+            // men backend beholder den gamle hvis vi ikke sender en ny.
         }
     } else {
         resetForm();
@@ -84,14 +85,13 @@ async function save() {
     if (!dateStr.value) return alert("Velg en dag først");
     if (!textContent.value.trim()) return alert("Skriv inn tekst");
 
-    // Validering kun for NY oppretting eller hvis vi bytter kilde
-    if (!isEditMode.value) {
-        if (videoSource.value === "upload" && files.value.length === 0) {
-            return alert("Last opp en video eller velg YouTube");
-        }
-        if (videoSource.value === "youtube" && !youtubeUrl.value.trim()) {
-            return alert("Skriv inn YouTube-lenke");
-        }
+    // Validering (gjelder nå både ny og redigering hvis man bytter kilde)
+    if (videoSource.value === "upload" && files.value.length === 0 && !isEditMode.value) {
+        // Ved redigering er det lov å ha tom files (da beholdes gammel fil)
+        return alert("Last opp en video eller velg YouTube");
+    }
+    if (videoSource.value === "youtube" && !youtubeUrl.value.trim()) {
+        return alert("Skriv inn YouTube-lenke");
     }
 
     const token = localStorage.getItem("authToken");
@@ -102,49 +102,33 @@ async function save() {
     try {
         let url = `${API_BASE_URL}/calendar`;
         let method = "POST";
-        let body;
-        let headers = { Authorization: `Bearer ${token}` };
 
         if (isEditMode.value) {
-            // --- REDIGERING (PUT) ---
             url = `${API_BASE_URL}/calendar/${props.entryToEdit.id}`;
             method = "PUT";
-
-            // Backend forventer JSON ved PUT i følge koden din
-            headers["Content-Type"] = "application/json";
-
-            const payload = {
-                date: dateStr.value, // Backend ser ut til å ignorere dato ved update, men vi sender med
-                task_text: textContent.value,
-                is_published: true
-            };
-
-            // Backend støtter foreløpig bare tekst/publisert endring via JSON PUT.
-            // Hvis du vil oppdatere video via PUT må backend endres til å ta imot fil/formdata også der, 
-            // eller du må lage en egen logikk. For nå sender vi video-URL hvis det er youtube.
-            if (videoSource.value === "youtube") {
-                payload.youtube_url = youtubeUrl.value;
-            }
-
-            body = JSON.stringify(payload);
-
-        } else {
-            // --- NY OPPFØRING (POST) ---
-            const formData = new FormData();
-            formData.append("date", dateStr.value);
-            formData.append("task_text", textContent.value);
-            formData.append("video_type", videoSource.value);
-            formData.append("is_published", "true");
-
-            if (videoSource.value === "upload") {
-                files.value.forEach((file) => formData.append("files", file));
-            } else {
-                formData.append("youtube_url", youtubeUrl.value);
-            }
-            body = formData; // Fetch setter Content-Type automatisk for FormData
         }
 
-        const response = await fetch(url, { method, headers, body });
+        // Vi bruker FormData for BÅDE POST og PUT nå
+        const formData = new FormData();
+        formData.append("date", dateStr.value);
+        formData.append("task_text", textContent.value);
+        formData.append("video_type", videoSource.value);
+        formData.append("is_published", "true");
+
+        if (videoSource.value === "upload") {
+            // Legg ved fil hvis brukeren har valgt en ny
+            if (files.value.length > 0) {
+                files.value.forEach((file) => formData.append("files", file));
+            }
+        } else {
+            formData.append("youtube_url", youtubeUrl.value);
+        }
+
+        // Merk: Fetch setter automatisk riktig Content-Type header (multipart/form-data) 
+        // når body er FormData, så vi trenger ikke sette den manuelt.
+        const headers = { Authorization: `Bearer ${token}` };
+
+        const response = await fetch(url, { method, headers, body: formData });
 
         if (!response.ok) {
             const errText = await response.text();
@@ -154,7 +138,7 @@ async function save() {
 
         alert(isEditMode.value ? "Endringer lagret!" : "Luke opprettet!");
         resetForm();
-        emit("saved"); // Gi beskjed til forelder at vi er ferdige
+        emit("saved");
 
     } catch (error) {
         alert(error.message);
@@ -203,18 +187,12 @@ async function save() {
         <!-- Video input felter -->
         <div class="mt-4 p-4 bg-white rounded border border-gray-200">
             <div v-if="videoSource === 'upload'">
-                <p v-if="isEditMode" class="text-sm text-gray-500 italic mb-2">
-                    Merk: Oppdatering av fil er ikke støttet i redigering ennå (backend begrensning).
-                </p>
-                <div v-else>
-                    <input class="w-full p-2 border border-gray-300 rounded-md mb-4" type="file" @change="onFileChange"
-                        accept="video/*" />
-                    <div v-for="file in files" :key="file.name"
-                        class="border border-gray-200 rounded-md p-3 bg-gray-50 mb-4">
-                        <p class="text-sm text-gray-600 mb-2">{{ file.name }} ({{ formatBytes(file.size) }})</p>
-                        <video v-if="isVideo(file)" :src="previews[file.name]" controls
-                            class="h-32 rounded w-full"></video>
-                    </div>
+                <input class="w-full p-2 border border-gray-300 rounded-md mb-4" type="file" @change="onFileChange"
+                    accept="video/*" />
+                <div v-for="file in files" :key="file.name"
+                    class="border border-gray-200 rounded-md p-3 bg-gray-50 mb-4">
+                    <p class="text-sm text-gray-600 mb-2">{{ file.name }} ({{ formatBytes(file.size) }})</p>
+                    <video v-if="isVideo(file)" :src="previews[file.name]" controls class="h-32 rounded w-full"></video>
                 </div>
             </div>
 
