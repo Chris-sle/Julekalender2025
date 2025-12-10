@@ -34,9 +34,9 @@
       @opened="modalOpened"
       @close="closeCard"
     >
-        <h2 class="tag-text">{{ selectedDay }}. Desember</h2>
-        <div v-if="currentEntry" class="space-y-4">
-        <p class="tag-text">{{ currentEntry.task_text }}</p>
+        <h2 class="day-label">{{ selectedDay }}. Desember</h2>
+        <div v-if="currentEntry" class="modal-content">
+        <p v-if="currentEntry.task_text" class="task-content">{{ currentEntry.task_text }}</p>
         
         <!-- YouTube video -->
         <div v-if="currentEntry.video_type === 'youtube' && currentEntry.video_path" class="w-full">
@@ -209,34 +209,76 @@ function modalOpened() {
   100% { transform: translateY(100vh) translateX(-10px); }
 }
 
-
-.modal-card .tag-text {
-  background: #fdf8e7;
-  padding: 12px 18px;
-  border-radius: 8px;
-  display: inline-block;
+.modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: clamp(0.5rem, 2vw, 1rem);
+  border-radius: clamp(0.4rem, 1.5vw, 0.6rem);
+  display: flex;
+  flex-direction: column;
   max-width: 100%;
-  color: #3b2f1e;
-  font-weight: 600;
-  font-family: 'Georgia', serif;
-  position: relative;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.25);
-
-  
-  background-image: radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
-  background-size: 6px 6px;
+  overflow-x: hidden;
 }
 
-.modal-card .tag-text::before {
+.modal-card .day-label {
+  background: #fdf8e7;
+  padding: clamp(0.75rem, 5vw, 1.25rem) clamp(1rem, 6vw, 1.5rem);
+  border-radius: clamp(0.5rem, 2vw, 0.75rem);
+  display: inline-block;
+  color: #3b2f1e;
+  font-weight: 600;
+  font-size: clamp(1.1rem, 4vw, 1.4rem);
+  font-family: 'Georgia', serif;
+  position: relative;
+  box-shadow: 0 clamp(2px, 1vw, 8px) clamp(4px, 2vw, 12px) rgba(0,0,0,0.25);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 6px 6px;
+  margin-bottom: clamp(1rem, 4vw, 2rem);
+}
+
+.modal-card .day-label::before {
   content: "";
   position: absolute;
   top: 0;
-  left: -12px;
+  left: clamp(-8px, -1.5vw, -12px);
   width: 0;
   height: 0;
-  border-top: 12px solid transparent;
-  border-bottom: 12px solid transparent;
-  border-right: 12px solid #fdf8e7;
+  border-top: clamp(8px, 1.5vw, 12px) solid transparent;
+  border-bottom: clamp(8px, 1.5vw, 12px) solid transparent;
+  border-right: clamp(8px, 1.5vw, 12px) solid #fdf8e7;
+}
+
+.modal-card .task-content {
+  background: #fdf8e7;
+  padding: clamp(0.65rem, 4vw, 1.15rem) clamp(0.9rem, 5vw, 1.4rem);
+  border-radius: clamp(0.5rem, 2vw, 0.75rem);
+  display: block;
+  max-width: 100%;
+  color: #3b2f1e;
+  font-weight: 500;
+  font-size: clamp(0.95rem, 3.5vw, 1.15rem);
+  font-family: 'Georgia', serif;
+  position: relative;
+  box-shadow: 0 clamp(2px, 1vw, 8px) clamp(4px, 2vw, 12px) rgba(0,0,0,0.25);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 6px 6px;
+  margin-bottom: clamp(0.75rem, 3vw, 1.5rem);
+  line-height: clamp(1.4, 2vw, 1.8);
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.modal-card .task-content::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: clamp(-8px, -1.5vw, -12px);
+  width: 0;
+  height: 0;
+  border-top: clamp(8px, 1.5vw, 12px) solid transparent;
+  border-bottom: clamp(8px, 1.5vw, 12px) solid transparent;
+  border-right: clamp(8px, 1.5vw, 12px) solid #fdf8e7;
 }
 
 

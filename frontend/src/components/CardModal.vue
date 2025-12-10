@@ -58,9 +58,12 @@ export default {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 8px 20px rgba(255, 255, 255, 0.4);
-  overflow-y: auto;
   z-index: 1001;
   position: relative;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .festive-border {
