@@ -5,9 +5,20 @@
     </div>
 
     <div class="flex gap-2">
+      <!-- Vis "Til Kalender" hvis vi er på admin-siden -->
       <button
+        v-if="isOnAdminPage"
+        class="px-3 py-1 bg-blue-600 rounded hover:bg-blue-500 text-sm"
+        @click="goToCalendar"
+      >
+        Til Kalender
+      </button>
+
+      <!-- Vis "Admin" hvis man er på kalender-siden (eller login) -->
+      <button
+        v-else
         class="px-3 py-1 bg-gray-600 rounded hover:bg-gray-500 text-sm"
-        @click="$router.push('/admin')"
+        @click="goToAdmin"
       >
         Admin
       </button>
@@ -16,9 +27,22 @@
 </template>
 
 <script setup>
-function resetCalendar() {
-  localStorage.removeItem('openedDays')
-  localStorage.removeItem('calendarDays')
-  alert('Calendar reset! Refresh the page.')
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();
+const router = useRouter();
+
+// Sjekker om nåværende sti starter med '/admin'
+const isOnAdminPage = computed(() => {
+  return route.path.startsWith('/admin');
+});
+
+function goToAdmin() {
+  router.push('/admin');
+}
+
+function goToCalendar() {
+  router.push('/');
 }
 </script>

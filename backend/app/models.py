@@ -33,13 +33,23 @@ class CalendarEntry(db.Model):
     is_published = db.Column(db.Boolean, default=False)
 
     def to_dict(self):
+        import os  # Importer os her inne for sikkerhets skyld
+        
+        video_url = None
+        if self.video_type == "youtube":
+            video_url = self.video_path # YouTube lenken lagres direkte i video_path nå
+        elif self.video_type == "upload" and self.video_path:
+            # Backend-ruten '/uploads/<filename>' serverer filene
+            filename = os.path.basename(self.video_path)
+            video_url = f"/uploads/{filename}"
+
         return {
             "id": self.id,
             "date": self.date.isoformat(),
-            #"youtube_url": self.youtube_url,
             "task_text": self.task_text,
             "video_type": self.video_type,
-            "video_path": self.video_path,
+            "video_path": self.video_path, # Behold for referanse
+            "video_url": video_url,        # <--- NYTT: Brukes av frontend for å vise videoen!
             "is_published": self.is_published
         }
 
