@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import ChangePassword from "../components/ChangePassword.vue";
+import TheList from "../components/TheList.vue";
 
 const router = useRouter();
 
@@ -14,6 +15,7 @@ const files = ref([]);
 const previews = ref({});
 const theSavedFiles = ref({});
 const theInfoSwitch = ref(false);
+const showTheList = ref(false);
 
 const videoSource = ref("upload");
 const youtubeUrl = ref("");
@@ -71,10 +73,12 @@ async function getAllData() {
   theSavedFiles.value = await response.json();
 }
 
-async function deleteData() {
-  if (!theSavedFiles.value?.id) return alert("Ingen entry å slette");
+async function deleteData(entry = null) {
+  const data = entry || theSavedFiles.value;
 
-  const response = await fetch(`http://127.0.0.1:5000/calendar/${theSavedFiles.value.id}`, {
+  if (!data?.id) return alert("Ingen entry å slette");
+
+  const response = await fetch(`http://127.0.0.1:5000/calendar/${data.id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${token.value}`,
@@ -87,8 +91,11 @@ async function deleteData() {
   }
 
   alert("Slettet!");
-  theSavedFiles.value = {};
-  theInfoSwitch.value = false;
+
+  if (!entry) {
+    theSavedFiles.value = {};
+    theInfoSwitch.value = false;
+  }
 }
 
 
@@ -169,6 +176,8 @@ function getUploadUrl(path) {
 </script>
 
 <template>
+
+
   <div class="flex-1 grid grid-cols-2 md:grid-cols-2 gap-10 p-6 bg-gray-50 ">
     <div class="col-span-full">
       <h1 class="text-3xl font-bold text-gray-900 mb-8 bg-blue-100 text-center">Admin - Julekalender</h1>
@@ -301,6 +310,11 @@ function getUploadUrl(path) {
 
     </div>
   </div>
-  <change-password></change-password>
+  <button @click="showTheList = !showTheList" class="ml-6 mt-6 w-50% bg-blue-900 text-white py-3 rounded-md hover:bg-blue-700 transition">Vis hele kalenderlista</button>
+  <div class="flex gap-6">
+    <TheList v-if="showTheList" :onDelete="deleteData" />
+    <change-password />
+  </div>
+
 </template>
 
